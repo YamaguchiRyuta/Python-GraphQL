@@ -1,63 +1,42 @@
-# 事前に pip install "gql[all]" を行なってください
+# 事前に pip install "gql[all]" を行なってください (https://gql.readthedocs.io/en/latest/intro.html#less-dependencies)
 from gql import gql, Client
 from gql.transport.aiohttp import AIOHTTPTransport
+from pprint import pprint
 
-transport = AIOHTTPTransport(url="https://api.obniz.com/v1/graphql")
-client = Client(transport=transport, fetch_schema_from_transport=True)
+# https://obniz.com/ja/console/apikeys/ で生成したAPIキー
+access_token = 'token_...'
+# obnizクラウドAPIエンドポイント
+url = 'https://api.obniz.com/v1/graphql'
 
-query = gql(
-    """
-{
-  devices(first: 1) {
-    totalCount
-    pageInfo {
-      hasNextPage
-      hasPreviousPage
-    }
+# ----- 事前準備 -----
+transport = AIOHTTPTransport(url=url, headers={'Authorization': f'Bearer {access_token}'})
+client = Client(transport=transport)
+
+# ----- 全件取得 -----
+result = client.execute(gql("""
+query {
+  devices {
     edges {
-      node {
-        id
-        access_token
-        description
-        metadata
-        devicekey
-        hardware
-        os
-        osVersion
-        region
-        status
-        pingInterval
-        createdAt
-        deviceLiveInfo {
-          isOnline
-          connectedNetwork {
-            online_at
-            net
-            local_ip
-            global_ip
-            wifi {
-              ssid
-              macAddress
-              rssi
-            }
-            wifimesh {
-              parent_obniz_id
-              root_obniz_id
-            }
-          }
-        }
-        user {
-          id
-        }
-        configs
-      }
+      node { id access_token hardware os osVersion }
     }
   }
-}
-"""
-)
+}"""))
+pprint(result)
+# {
+#   'devices': {
+#     'edges': [
+#       {'node': {'id': '0000-0000', 'access_token': 'xxx', 'hardware': 'xxx', 'os': 'xxx', 'osVersion': '0.0.0'}}
+#     ]
+#   }
+# }
 
-
-if __name__ == '__main__':
-    result = client.execute(query)
-    print(result)
+# ----- ObnizIDを指定して１件取得 -----
+result = client.execute(gql("""
+query($obniz_id:String!) {
+  devices(id: $obniz_id) {
+    edges {
+      node { id access_token hardware os osVersion }
+    }
+  }
+}"""), variable_values={'obniz_id': '0000-0000'})
+pprint(result)
